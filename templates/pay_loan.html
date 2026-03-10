@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Pay Loan — Banking System{% endblock %}
+{% block page_heading %}Pay Loan{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <form method="POST" action="{{ url_for('pay_loan') }}">
+        <label for="loan_id">Loan ID</label>
+        <input type="text" id="loan_id" name="loan_id" placeholder="e.g. 1" required>
+
+        <label for="payment_amount">Payment Amount</label>
+        <input type="text" id="payment_amount" name="payment_amount" placeholder="e.g. 5000.00" required>
+
+        <button type="submit" class="btn-submit">Make Payment</button>
+    </form>
+</div>
+{% endblock %}

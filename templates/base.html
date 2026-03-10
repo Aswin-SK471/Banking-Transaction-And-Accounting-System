@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Banking System{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    {% if session.get('user_id') %}
+    {# ===== AUTHENTICATED: Sidebar + Main ===== #}
+    <div class="app-layout">
+
+        <!-- Dark Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">🏛</div>
+                <div class="brand-text">
+                    Banking System
+                    <small>Finance Dashboard</small>
+                </div>
+            </div>
+
+            <div class="sidebar-nav">
+                <div class="sidebar-section">Main</div>
+                <a href="{{ url_for('home') }}" class="{% if request.endpoint == 'home' %}active{% endif %}">
+                    <span class="nav-icon">📊</span><span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('create_account') }}"
+                    class="{% if request.endpoint == 'create_account' %}active{% endif %}">
+                    <span class="nav-icon">➕</span><span>New Account</span>
+                </a>
+
+                <div class="sidebar-section">Banking</div>
+                <a href="{{ url_for('deposit') }}" class="{% if request.endpoint == 'deposit' %}active{% endif %}">
+                    <span class="nav-icon">💰</span><span>Deposit</span>
+                </a>
+                <a href="{{ url_for('withdraw') }}" class="{% if request.endpoint == 'withdraw' %}active{% endif %}">
+                    <span class="nav-icon">💸</span><span>Withdraw</span>
+                </a>
+                <a href="{{ url_for('transfer') }}" class="{% if request.endpoint == 'transfer' %}active{% endif %}">
+                    <span class="nav-icon">🔄</span><span>Transfer</span>
+                </a>
+                <a href="{{ url_for('transactions') }}"
+                    class="{% if request.endpoint == 'transactions' %}active{% endif %}">
+                    <span class="nav-icon">📋</span><span>Transactions</span>
+                </a>
+
+                <div class="sidebar-section">Loans</div>
+                <a href="{{ url_for('apply_loan') }}"
+                    class="{% if request.endpoint == 'apply_loan' %}active{% endif %}">
+                    <span class="nav-icon">📝</span><span>Apply Loan</span>
+                </a>
+                <a href="{{ url_for('loans') }}" class="{% if request.endpoint == 'loans' %}active{% endif %}">
+                    <span class="nav-icon">📑</span><span>Loan History</span>
+                </a>
+                <a href="{{ url_for('pay_loan') }}" class="{% if request.endpoint == 'pay_loan' %}active{% endif %}">
+                    <span class="nav-icon">💳</span><span>Pay Loan</span>
+                </a>
+                <a href="{{ url_for('loan_payments') }}"
+                    class="{% if request.endpoint == 'loan_payments' %}active{% endif %}">
+                    <span class="nav-icon">🧾</span><span>Payments</span>
+                </a>
+
+                <div class="sidebar-section">Reports</div>
+                <a href="{{ url_for('report_monthly') }}"
+                    class="{% if request.endpoint == 'report_monthly' %}active{% endif %}">
+                    <span class="nav-icon">📅</span><span>Monthly Report</span>
+                </a>
+                <a href="{{ url_for('report_loans') }}"
+                    class="{% if request.endpoint == 'report_loans' %}active{% endif %}">
+                    <span class="nav-icon">📈</span><span>Loan Analytics</span>
+                </a>
+            </div>
+
+            <div class="sidebar-footer">
+                <a href="{{ url_for('logout') }}">
+                    <span class="nav-icon">🚪</span><span>Logout</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- Main Area -->
+        <div class="main-area">
+            <header class="top-header">
+                <div class="top-header-left">
+                    <h1>{% block page_heading %}Dashboard{% endblock %}</h1>
+                </div>
+                <div class="top-header-right">
+                    <div class="user-badge">
+                        <div class="user-avatar">{{ session.get('username', '?')[0]|upper }}</div>
+                        <span>{{ session.get('username') }}</span>
+                    </div>
+                </div>
+            </header>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-container">
+                {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <div class="main-content">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    {# ===== UNAUTHENTICATED: Auth layout ===== #}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="auth-flash-container">
+        {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    {% block auth_content %}{% endblock %}
+
+    {% endif %}
+
+    <!-- Animated Counter Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Animate card values (count up)
+            document.querySelectorAll('.card-value').forEach(function (el) {
+                var text = el.textContent.trim();
+                var match = text.match(/[₹]?([\d,]+\.?\d*)/);
+                if (!match) return;
+
+                var prefix = text.startsWith('₹') ? '₹' : '';
+                var target = parseFloat(match[1].replace(/,/g, ''));
+                if (isNaN(target) || target === 0) return;
+
+                var duration = 800;
+                var start = performance.now();
+
+                el.textContent = prefix + '0';
+
+                function step(now) {
+                    var elapsed = now - start;
+                    var progress = Math.min(elapsed / duration, 1);
+                    // Ease out cubic
+                    var eased = 1 - Math.pow(1 - progress, 3);
+                    var current = target * eased;
+
+                    if (target % 1 !== 0) {
+                        el.textContent = prefix + current.toFixed(2);
+                    } else {
+                        el.textContent = prefix + Math.floor(current);
+                    }
+
+                    if (progress < 1) {
+                        requestAnimationFrame(step);
+                    } else {
+                        el.textContent = text; // Restore original
+                    }
+                }
+
+                requestAnimationFrame(step);
+            });
+        });
+    </script>
+
+</body>
+
+</html>

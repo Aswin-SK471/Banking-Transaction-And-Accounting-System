@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Create Account — Banking System{% endblock %}
+{% block page_heading %}Open New Account{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <form method="POST" action="{{ url_for('create_account') }}">
+        <label for="initial_deposit">Initial Deposit (optional)</label>
+        <input type="text" id="initial_deposit" name="initial_deposit" placeholder="e.g. 1000.00 (leave blank for ₹0)">
+
+        <button type="submit" class="btn-submit">Create Account</button>
+    </form>
+</div>
+
+{% if accounts %}
+<h2>Your Existing Accounts</h2>
+<table>
+    <tr>
+        <th>Account ID</th>
+        <th>Balance (₹)</th>
+    </tr>
+    {% for a in accounts %}
+    <tr>
+        <td>#{{ a.account_id }}</td>
+        <td>₹{{ a.balance }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+{% endblock %}

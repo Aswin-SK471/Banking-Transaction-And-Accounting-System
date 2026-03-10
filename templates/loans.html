@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Loans — Banking System{% endblock %}
+{% block page_heading %}Loan History{% endblock %}
+
+{% block content %}
+{% if loans %}
+<table>
+    <tr>
+        <th>Loan ID</th>
+        <th>Account</th>
+        <th>Loan Amount</th>
+        <th>Remaining</th>
+        <th>Interest (%)</th>
+        <th>Start Date</th>
+        <th>Status</th>
+    </tr>
+    {% for l in loans %}
+    <tr>
+        <td>{{ l.loan_id }}</td>
+        <td>#{{ l.account_id }}</td>
+        <td>₹{{ l.loan_amount }}</td>
+        <td>₹{{ l.remaining_amount }}</td>
+        <td>{{ l.interest_rate }}</td>
+        <td>{{ l.start_date }}</td>
+        <td>
+            {% if l.status == 'PAID' %}
+            <span class="status-paid">PAID</span>
+            {% else %}
+            <span class="status-active">ACTIVE</span>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<div class="empty-message">No loans found.</div>
+{% endif %}
+{% endblock %}

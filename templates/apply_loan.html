@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Apply Loan — Banking System{% endblock %}
+{% block page_heading %}Apply for a Loan{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <form method="POST" action="{{ url_for('apply_loan') }}">
+        <label for="account_id">Credit to Account</label>
+        <select id="account_id" name="account_id" required>
+            <option value="" disabled selected>-- Select account to credit --</option>
+            {% for a in accounts %}
+            <option value="{{ a.account_id }}">Account #{{ a.account_id }} — ₹{{ a.balance }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="amount">Loan Amount</label>
+        <input type="text" id="amount" name="amount" placeholder="e.g. 10000.00" required>
+
+        <label for="interest_rate">Interest Rate (%)</label>
+        <input type="text" id="interest_rate" name="interest_rate" placeholder="e.g. 8.50" required>
+
+        <button type="submit" class="btn-submit">Apply Loan</button>
+    </form>
+</div>
+{% endblock %}

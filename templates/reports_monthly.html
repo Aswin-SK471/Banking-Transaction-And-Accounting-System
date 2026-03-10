@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Monthly Report — Banking System{% endblock %}
+{% block page_heading %}Monthly Transaction Summary{% endblock %}
+
+{% block content %}
+{% if reports %}
+<table>
+    <tr>
+        <th>Year</th>
+        <th>Month</th>
+        <th>Transactions</th>
+        <th>Deposits (₹)</th>
+        <th>Withdrawals (₹)</th>
+        <th>Failed</th>
+    </tr>
+    {% for r in reports %}
+    <tr>
+        <td>{{ r.txn_year }}</td>
+        <td>{{ r.txn_month }}</td>
+        <td>{{ r.total_transactions }}</td>
+        <td>₹{{ r.total_deposits }}</td>
+        <td>₹{{ r.total_withdrawals }}</td>
+        <td>
+            {% if r.failed_count > 0 %}
+            <span class="status-failed">{{ r.failed_count }}</span>
+            {% else %}
+            0
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<div class="empty-message">No transactions yet to summarize.</div>
+{% endif %}
+{% endblock %}

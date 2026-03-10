@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Loan Payments — Banking System{% endblock %}
+{% block page_heading %}Loan Payment History{% endblock %}
+
+{% block content %}
+{% if payments %}
+<table>
+    <tr>
+        <th>Payment ID</th>
+        <th>Loan ID</th>
+        <th>Amount Paid</th>
+        <th>Date</th>
+    </tr>
+    {% for p in payments %}
+    <tr>
+        <td>{{ p.payment_id }}</td>
+        <td>{{ p.loan_id }}</td>
+        <td>₹{{ p.amount_paid }}</td>
+        <td>{{ p.payment_date }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<div class="empty-message">No loan payments found.</div>
+{% endif %}
+{% endblock %}

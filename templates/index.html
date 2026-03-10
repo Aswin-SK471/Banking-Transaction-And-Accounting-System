@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Banking System{% endblock %}
+{% block page_heading %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Summary Cards -->
+<div class="card-grid">
+    <div class="card card-accent">
+        <h3>Total Balance</h3>
+        <div class="card-value">₹{{ total_balance }}</div>
+    </div>
+    <div class="card card-info">
+        <h3>Deposits</h3>
+        <div class="card-value">₹{{ txn_stats.total_deposits }}</div>
+    </div>
+    <div class="card card-warning">
+        <h3>Withdrawals</h3>
+        <div class="card-value">₹{{ txn_stats.total_withdrawals }}</div>
+    </div>
+    <div class="card">
+        <h3>Active Loans</h3>
+        <div class="card-value">{{ loan_stats.active_loans }}</div>
+    </div>
+    <div class="card card-warning">
+        <h3>Loan Remaining</h3>
+        <div class="card-value">₹{{ loan_stats.total_remaining }}</div>
+    </div>
+    <div class="card">
+        <h3>Accounts</h3>
+        <div class="card-value">{{ accounts|length }}</div>
+    </div>
+</div>
+
+<!-- Accounts Table -->
+<h2>Your Accounts</h2>
+{% if accounts %}
+<table>
+    <tr>
+        <th>Account ID</th>
+        <th>Balance (₹)</th>
+    </tr>
+    {% for a in accounts %}
+    <tr>
+        <td>#{{ a.account_id }}</td>
+        <td>₹{{ a.balance }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<div class="empty-message">No accounts yet. Create your first account to get started.</div>
+{% endif %}
+
+<!-- Quick Actions -->
+<h2>Quick Actions</h2>
+<div class="nav-grid">
+    <a href="{{ url_for('create_account') }}"><button class="nav-btn">➕ New Account</button></a>
+    <a href="{{ url_for('deposit') }}"><button class="nav-btn">💰 Deposit</button></a>
+    <a href="{{ url_for('withdraw') }}"><button class="nav-btn">💸 Withdraw</button></a>
+    <a href="{{ url_for('transfer') }}"><button class="nav-btn">🔄 Transfer</button></a>
+    <a href="{{ url_for('apply_loan') }}"><button class="nav-btn">📝 Apply Loan</button></a>
+    <a href="{{ url_for('transactions') }}"><button class="nav-btn">📋 Transactions</button></a>
+    <a href="{{ url_for('report_monthly') }}"><button class="nav-btn">📅 Monthly Report</button></a>
+    <a href="{{ url_for('report_loans') }}"><button class="nav-btn">📈 Loan Analytics</button></a>
+</div>
+{% endblock %}

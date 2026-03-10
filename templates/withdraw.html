@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Withdraw — Banking System{% endblock %}
+{% block page_heading %}Withdraw{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <form method="POST" action="{{ url_for('withdraw') }}">
+        <label for="account_id">Select Account</label>
+        <select id="account_id" name="account_id" required>
+            <option value="" disabled selected>-- Choose an account --</option>
+            {% for a in accounts %}
+            <option value="{{ a.account_id }}">Account #{{ a.account_id }} — ₹{{ a.balance }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="amount">Amount</label>
+        <input type="text" id="amount" name="amount" placeholder="e.g. 200.00" required>
+
+        <button type="submit" class="btn-submit">Withdraw</button>
+    </form>
+</div>
+{% endblock %}

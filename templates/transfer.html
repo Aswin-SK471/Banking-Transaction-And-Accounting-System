@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Transfer — Banking System{% endblock %}
+{% block page_heading %}Transfer{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <form method="POST" action="{{ url_for('transfer') }}">
+        <label for="from_account">From Account (yours)</label>
+        <select id="from_account" name="from_account" required>
+            <option value="" disabled selected>-- Select sender account --</option>
+            {% for a in accounts %}
+            <option value="{{ a.account_id }}">Account #{{ a.account_id }} — ₹{{ a.balance }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="to_account">To Account ID (any account)</label>
+        <input type="text" id="to_account" name="to_account" placeholder="e.g. 2" required>
+
+        <label for="amount">Amount</label>
+        <input type="text" id="amount" name="amount" placeholder="e.g. 1000.00" required>
+
+        <button type="submit" class="btn-submit">Transfer</button>
+    </form>
+</div>
+{% endblock %}

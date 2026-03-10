@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Loan Analytics — Banking System{% endblock %}
+{% block page_heading %}Loan Analytics{% endblock %}
+
+{% block content %}
+<!-- Summary Cards -->
+{% if summary %}
+<div class="card-grid">
+    <div class="card">
+        <h3>Total Loans</h3>
+        <div class="card-value">{{ summary.total_loans }}</div>
+    </div>
+    <div class="card card-info">
+        <h3>Active</h3>
+        <div class="card-value">{{ summary.active_count or 0 }}</div>
+    </div>
+    <div class="card card-info">
+        <h3>Paid</h3>
+        <div class="card-value">{{ summary.paid_count or 0 }}</div>
+    </div>
+    <div class="card card-warning">
+        <h3>Total Borrowed</h3>
+        <div class="card-value">₹{{ summary.total_borrowed }}</div>
+    </div>
+    <div class="card card-warning">
+        <h3>Total Interest</h3>
+        <div class="card-value">₹{{ summary.total_interest }}</div>
+    </div>
+    <div class="card">
+        <h3>Total Remaining</h3>
+        <div class="card-value">₹{{ summary.total_remaining }}</div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Per-Loan Breakdown -->
+<h2>Per-Loan Breakdown</h2>
+{% if loans %}
+<table>
+    <tr>
+        <th>Loan ID</th>
+        <th>Account</th>
+        <th>Amount (₹)</th>
+        <th>Rate (%)</th>
+        <th>Interest (₹)</th>
+        <th>Remaining (₹)</th>
+        <th>Status</th>
+    </tr>
+    {% for l in loans %}
+    <tr>
+        <td>{{ l.loan_id }}</td>
+        <td>#{{ l.account_id }}</td>
+        <td>₹{{ l.loan_amount }}</td>
+        <td>{{ l.interest_rate }}</td>
+        <td>₹{{ l.interest_earned }}</td>
+        <td>₹{{ l.remaining_amount }}</td>
+        <td>
+            {% if l.status == 'PAID' %}
+            <span class="status-paid">PAID</span>
+            {% else %}
+            <span class="status-active">ACTIVE</span>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<div class="empty-message">No loans found.</div>
+{% endif %}
+{% endblock %}
