@@ -3,26 +3,57 @@
 
 {% block auth_content %}
 <div class="auth-page">
-    <div class="auth-container">
-        <div class="auth-brand-icon">🏛</div>
-        <div class="auth-brand">Banking System</div>
-        <div class="auth-subtitle">Sign in to your account</div>
+    <div class="auth-split-card">
+        
+        <!-- Left Side: Form -->
+        <div class="auth-form-side">
+            <img src="{{ url_for('static', filename='logo.png') }}?v=2" alt="Logo" style="width: 50px; height: 50px; margin-bottom: 30px; border-radius: 14px; box-shadow: 0 8px 24px var(--primary-glow);">
+            <h2 class="auth-heading">Get Started</h2>
+            <p class="auth-subheading">Welcome to Banking System - Please sign in</p>
 
-        <div class="form-card">
             <form method="POST" action="{{ url_for('login') }}">
                 <label for="username">Username</label>
-                <input type="text" id="username" name="username" placeholder="Enter your username" required
-                    autocomplete="username">
+                <input type="text" id="username" name="username" placeholder="Enter your username" required autocomplete="username">
 
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="Enter your password" required
-                    autocomplete="current-password">
+                <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
 
                 <button type="submit" class="btn-submit">Sign In</button>
             </form>
+
+            <div class="auth-footer">
+                Don't have an account? <a href="{{ url_for('register') }}">Sign up</a>
+            </div>
         </div>
 
-        <p>Don't have an account? <a href="{{ url_for('register') }}">Create one</a></p>
+        <!-- Right Side: Presentation -->
+        <div class="auth-presentation-side">
+            <div class="presentation-mocks-wrapper">
+                <!-- Sidebar mock -->
+                <div class="mock-sidebar">
+                    <div class="mock-sidebar-icon active"></div>
+                    <div class="mock-sidebar-icon"></div>
+                    <div class="mock-sidebar-icon"></div>
+                </div>
+
+                <!-- Credit Card mock -->
+                <div class="mock-cc-container">
+                    <div class="mock-cc-top">
+                        <img src="{{ url_for('static', filename='logo.png') }}?v=2" alt="Logo" style="width: 30px; height: 30px; border-radius: 8px;">
+                        <div style="font-weight: 700; color: var(--text-muted);">VISA</div>
+                    </div>
+                    <div class="mock-cc-balance">
+                        <span>Combined balance</span>
+                        12,347.23 $
+                    </div>
+                    <div class="mock-cc-bottom">
+                        <div>Primary Card<br>3495 **** **** 6917</div>
+                        <div style="text-align: right;"><br>2,546.64$</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 {% endblock %}

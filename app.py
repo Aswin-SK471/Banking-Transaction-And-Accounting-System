@@ -43,7 +43,7 @@ def get_user_accounts(user_id):
     cursor = db.cursor(dictionary=True)
     try:
         cursor.execute(
-            "SELECT account_id, balance FROM accounts WHERE user_id = %s ORDER BY account_id",
+            "SELECT account_id, account_type, balance FROM accounts WHERE user_id = %s ORDER BY account_id",
             (user_id,))
         return cursor.fetchall()
     finally:
@@ -73,10 +73,13 @@ def register():
 
     username = request.form.get("username", "").strip()
     email = request.form.get("email", "").strip()
+    gmail = email # Map single input to both schema columns
+    aadhar_number = request.form.get("aadhar_number", "").strip()
+    phone = request.form.get("phone", "").strip()
     password = request.form.get("password", "").strip()
     confirm = request.form.get("confirm_password", "").strip()
 
-    if not username or not email or not password:
+    if not username or not email or not password or not aadhar_number or not phone:
         flash("All fields are required.", "error")
         return render_template("register.html")
 
@@ -88,20 +91,24 @@ def register():
         flash("Password must be at least 4 characters.", "error")
         return render_template("register.html")
 
+    if len(aadhar_number) != 12 or not aadhar_number.isdigit():
+        flash("Aadhar number must be exactly 12 digits.", "error")
+        return render_template("register.html")
+
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:
-        cursor.execute("SELECT user_id FROM users WHERE username = %s OR email = %s",
-                       (username, email))
+        cursor.execute("SELECT user_id FROM users WHERE username = %s OR email = %s OR gmail = %s OR aadhar_number = %s",
+                       (username, email, gmail, aadhar_number))
         if cursor.fetchone():
-            flash("Username or email already taken.", "error")
+            flash("Username, email, gmail, or aadhar already taken.", "error")
             return render_template("register.html")
 
         hashed = generate_password_hash(password)
         cursor.execute("""
-            INSERT INTO users (username, email, password_hash)
-            VALUES (%s, %s, %s)
-        """, (username, email, hashed))
+            INSERT INTO users (username, email, gmail, aadhar_number, phone, password_hash)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (username, email, gmail, aadhar_number, phone, hashed))
 
         user_id = cursor.lastrowid
 
@@ -177,14 +184,17 @@ def create_account():
 
     # --- POST ---
     initial_deposit = parse_decimal(request.form.get("initial_deposit", "0"))
+    account_type = request.form.get("account_type", "Savings").strip()
+    if account_type not in ("Savings", "Current"):
+        account_type = "Savings"
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:
         # Always create with 0 balance — trigger handles deposits
         cursor.execute("""
-            INSERT INTO accounts (user_id, balance) VALUES (%s, 0.00)
-        """, (user_id,))
+            INSERT INTO accounts (user_id, account_type, balance) VALUES (%s, %s, 0.00)
+        """, (user_id, account_type))
 
         new_account_id = cursor.lastrowid
 
@@ -213,6 +223,20 @@ def home():
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:
+        # Get user info and mask Aadhar
+        cursor.execute("SELECT username as name, email, gmail, aadhar_number, phone FROM users WHERE user_id = %s", (user_id,))
+        user_info = cursor.fetchone()
+        if user_info and user_info.get("aadhar_number"):
+            aadhar = user_info["aadhar_number"]
+            user_info["aadhar_masked"] = f"XXXX-XXXX-{aadhar[-4:]}" if len(aadhar) == 12 else "XXXX-XXXX-XXXX"
+            # Remove raw aadhar from dictionary to prevent accidental exposure
+            del user_info["aadhar_number"]
+        else:
+            if user_info:
+                user_info["aadhar_masked"] = "N/A"
+            else:
+                user_info = {}
+
         # Get user's accounts
         cursor.execute("SELECT * FROM accounts WHERE user_id = %s ORDER BY account_id", (user_id,))
         accounts = cursor.fetchall()
@@ -244,11 +268,24 @@ def home():
         """, (user_id,))
         loan_stats = cursor.fetchone()
 
+        # Recent transactions (top 5) for dashboard sidebar
+        cursor.execute("""
+            SELECT t.transaction_id, t.type, t.amount, t.created_at, t.status, a.account_id
+            FROM transactions t
+            JOIN accounts a ON t.account_id = a.account_id
+            WHERE a.user_id = %s
+            ORDER BY t.created_at DESC
+            LIMIT 5
+        """, (user_id,))
+        recent_txns = cursor.fetchall()
+
         return render_template("index.html",
+                               user_info=user_info,
                                accounts=accounts,
                                total_balance=total_balance,
                                txn_stats=txn_stats,
-                               loan_stats=loan_stats)
+                               loan_stats=loan_stats,
+                               recent_txns=recent_txns)
     finally:
         cursor.close()
         db.close()
@@ -491,72 +528,111 @@ def loans():
     return render_template("loans.html", loans=data)
 
 # ================================================================
-#  PAY LOAN
+#  PAY LOAN (with loan + account dropdowns)
 # ================================================================
 @app.route("/pay_loan", methods=["GET", "POST"])
 @login_required
 def pay_loan():
     user_id = session["user_id"]
 
+    # Helper: fetch active loans for the logged-in user
+    def get_user_loans():
+        db2 = get_db()
+        cur2 = db2.cursor(dictionary=True)
+        try:
+            cur2.execute("""
+                SELECT loan_id, remaining_amount
+                FROM loans WHERE user_id = %s AND status = 'ACTIVE'
+                ORDER BY loan_id
+            """, (user_id,))
+            return cur2.fetchall()
+        finally:
+            cur2.close()
+            db2.close()
+
+    accounts = get_user_accounts(user_id)
+    loans_list = get_user_loans()
+
     if request.method == "GET":
-        return render_template("pay_loan.html")
+        return render_template("pay_loan.html", loans=loans_list, accounts=accounts)
 
     # --- POST ---
     loan_id = request.form.get("loan_id", "").strip()
+    account_id = request.form.get("account_id", "").strip()
     payment_amount = parse_decimal(request.form.get("payment_amount", ""))
 
-    if not loan_id or payment_amount is None:
-        flash("Please enter a valid loan ID and a positive payment amount.", "error")
-        return render_template("pay_loan.html")
+    if not loan_id or not account_id or payment_amount is None:
+        flash("Please select a loan, an account, and enter a positive payment amount.", "error")
+        return render_template("pay_loan.html", loans=loans_list, accounts=accounts)
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:
-        cursor.execute("SELECT * FROM loans WHERE loan_id = %s AND user_id = %s",
+        # --- Atomic transaction for financial safety with Row-Level Locking ---
+        cursor.execute("START TRANSACTION")
+
+        # Verify loan belongs to user and is active. Lock it to prevent concurrent payments.
+        cursor.execute("SELECT * FROM loans WHERE loan_id = %s AND user_id = %s FOR UPDATE",
                        (loan_id, user_id))
         loan = cursor.fetchone()
 
         if loan is None:
+            cursor.execute("ROLLBACK")
             flash("Loan not found or does not belong to you.", "error")
-            return render_template("pay_loan.html")
+            return render_template("pay_loan.html", loans=loans_list, accounts=accounts)
 
         if loan["status"] == "PAID":
+            cursor.execute("ROLLBACK")
             flash("This loan is already fully paid.", "error")
-            return render_template("pay_loan.html")
+            return render_template("pay_loan.html", loans=loans_list, accounts=accounts)
 
         remaining = Decimal(str(loan["remaining_amount"]))
-        account_id = loan["account_id"]
 
         if payment_amount > remaining:
+            cursor.execute("ROLLBACK")
             flash("Payment amount exceeds remaining loan balance.", "error")
-            return render_template("pay_loan.html")
+            return render_template("pay_loan.html", loans=loans_list, accounts=accounts)
 
-        cursor.execute("SELECT balance FROM accounts WHERE account_id = %s", (account_id,))
+        # Verify account belongs to user and has sufficient balance. Lock it to prevent dirty reads/lost updates.
+        cursor.execute("SELECT balance FROM accounts WHERE account_id = %s AND user_id = %s FOR UPDATE",
+                       (account_id, user_id))
         acc = cursor.fetchone()
+
+        if acc is None:
+            cursor.execute("ROLLBACK")
+            flash("Account not found or does not belong to you.", "error")
+            return render_template("pay_loan.html", loans=loans_list, accounts=accounts)
+
         balance = Decimal(str(acc["balance"]))
 
         if payment_amount > balance:
+            cursor.execute("ROLLBACK")
             flash("Insufficient balance in Account #" + str(account_id) + " for this payment.", "error")
-            return render_template("pay_loan.html")
+            return render_template("pay_loan.html", loans=loans_list, accounts=accounts)
 
+        # Deduct from selected account
         cursor.execute("UPDATE accounts SET balance = balance - %s WHERE account_id = %s",
                        (str(payment_amount), account_id))
 
+        # Calculate new remaining balance
         new_remaining = remaining - payment_amount
+
+        # Record payment FIRST (trigger checks remaining_amount before it's reduced)
+        cursor.execute("""
+            INSERT INTO loan_payments (loan_id, account_id, amount_paid, remaining_balance)
+            VALUES (%s, %s, %s, %s)
+        """, (loan_id, account_id, str(payment_amount), str(new_remaining)))
+
+        # THEN update loan remaining balance
         cursor.execute("UPDATE loans SET remaining_amount = %s WHERE loan_id = %s",
                        (str(new_remaining), loan_id))
 
-        cursor.execute("""
-            INSERT INTO loan_payments (loan_id, amount_paid)
-            VALUES (%s, %s)
-        """, (loan_id, str(payment_amount)))
-
         db.commit()
-        flash("Payment of ₹" + str(payment_amount) + " recorded!", "success")
+        flash("Payment of ₹" + str(payment_amount) + " from Account #" + str(account_id) + " recorded!", "success")
     except mysql.connector.Error as e:
         db.rollback()
         flash("Payment failed: " + str(e), "error")
-        return render_template("pay_loan.html")
+        return render_template("pay_loan.html", loans=loans_list, accounts=accounts)
     finally:
         cursor.close()
         db.close()
@@ -652,6 +728,101 @@ def report_loans():
         db.close()
     return render_template("reports_loans.html", loans=loan_details, summary=summary)
 
+# ================================================================
+# ================================================================
+#  ADMIN: Audit Accounts (Table-Level Locking)
+# ================================================================
+@app.route("/admin/audit")
+@login_required
+def admin_audit():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        # Implement table-level locking for bulk operations
+        cursor.execute("LOCK TABLES accounts WRITE")
+        
+        cursor.execute("SELECT COUNT(*) AS total_accounts, COALESCE(SUM(balance), 0) AS total_system_balance FROM accounts")
+        audit_data = cursor.fetchone()
+        
+    finally:
+        # Always unlock in a finally block to prevent database deadlocks
+        try:
+            cursor.execute("UNLOCK TABLES")
+        except:
+            pass
+        cursor.close()
+        db.close()
+        
+    flash(f"System Audit Complete! Total Accounts: {audit_data['total_accounts']}, Total Bank Balance: ₹{audit_data['total_system_balance']}", "success")
+    return redirect(url_for("home"))
+
+# ================================================================
+#  DATABASE FEATURES PAGE
+# ================================================================
+@app.route("/database_features")
+@login_required
+def database_features():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        # Tables
+        cursor.execute("""
+            SELECT TABLE_NAME, TABLE_ROWS, CREATE_TIME
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_SCHEMA = 'banking_system' AND TABLE_TYPE = 'BASE TABLE'
+            ORDER BY TABLE_NAME
+        """)
+        tables = cursor.fetchall()
+
+        # Triggers
+        cursor.execute("""
+            SELECT TRIGGER_NAME, EVENT_MANIPULATION, EVENT_OBJECT_TABLE, ACTION_TIMING
+            FROM INFORMATION_SCHEMA.TRIGGERS
+            WHERE TRIGGER_SCHEMA = 'banking_system'
+            ORDER BY TRIGGER_NAME
+        """)
+        triggers = cursor.fetchall()
+
+        # Stored Procedures
+        cursor.execute("""
+            SELECT ROUTINE_NAME, ROUTINE_TYPE, CREATED
+            FROM INFORMATION_SCHEMA.ROUTINES
+            WHERE ROUTINE_SCHEMA = 'banking_system'
+            ORDER BY ROUTINE_NAME
+        """)
+        procedures = cursor.fetchall()
+
+        # Indexes
+        cursor.execute("""
+            SELECT DISTINCT INDEX_NAME, TABLE_NAME, COLUMN_NAME, NON_UNIQUE
+            FROM INFORMATION_SCHEMA.STATISTICS
+            WHERE TABLE_SCHEMA = 'banking_system'
+            ORDER BY TABLE_NAME, INDEX_NAME
+        """)
+        indexes = cursor.fetchall()
+
+        # Views
+        cursor.execute("""
+            SELECT TABLE_NAME AS VIEW_NAME
+            FROM INFORMATION_SCHEMA.VIEWS
+            WHERE TABLE_SCHEMA = 'banking_system'
+            ORDER BY TABLE_NAME
+        """)
+        views = cursor.fetchall()
+
+    finally:
+        cursor.close()
+        db.close()
+
+    return render_template("database_features.html",
+                           tables=tables,
+                           triggers=triggers,
+                           procedures=procedures,
+                           indexes=indexes,
+                           views=views)
+
 # ----------------------------------------------------------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    from waitress import serve
+    print("Starting production WSGI server on http://0.0.0.0:5000")
+    serve(app, host="0.0.0.0", port=5000)

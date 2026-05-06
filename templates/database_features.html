@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Database Architecture — Banking System{% endblock %}
+{% block page_heading %}Database Architecture{% endblock %}
+
+{% block content %}
+
+<!-- Tables -->
+<h2>Tables</h2>
+<table>
+    <tr>
+        <th>Table Name</th>
+        <th>Rows (approx)</th>
+        <th>Created</th>
+    </tr>
+    {% for t in tables %}
+    <tr>
+        <td>{{ t.TABLE_NAME }}</td>
+        <td>{{ t.TABLE_ROWS or 0 }}</td>
+        <td>{{ t.CREATE_TIME }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<!-- Triggers -->
+<h2>Triggers</h2>
+<table>
+    <tr>
+        <th>Trigger Name</th>
+        <th>Timing</th>
+        <th>Event</th>
+        <th>Table</th>
+    </tr>
+    {% for t in triggers %}
+    <tr>
+        <td>{{ t.TRIGGER_NAME }}</td>
+        <td><span class="status-active">{{ t.ACTION_TIMING }}</span></td>
+        <td>{{ t.EVENT_MANIPULATION }}</td>
+        <td>{{ t.EVENT_OBJECT_TABLE }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<!-- Stored Procedures -->
+<h2>Stored Procedures</h2>
+{% if procedures %}
+<table>
+    <tr>
+        <th>Routine Name</th>
+        <th>Type</th>
+        <th>Created</th>
+    </tr>
+    {% for p in procedures %}
+    <tr>
+        <td>{{ p.ROUTINE_NAME }}</td>
+        <td><span class="status-paid">{{ p.ROUTINE_TYPE }}</span></td>
+        <td>{{ p.CREATED }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<div class="empty-message">No stored procedures found.</div>
+{% endif %}
+
+<!-- Indexes -->
+<h2>Indexes</h2>
+<table>
+    <tr>
+        <th>Index Name</th>
+        <th>Table</th>
+        <th>Column</th>
+        <th>Unique</th>
+    </tr>
+    {% for i in indexes %}
+    <tr>
+        <td>{{ i.INDEX_NAME }}</td>
+        <td>{{ i.TABLE_NAME }}</td>
+        <td>{{ i.COLUMN_NAME }}</td>
+        <td>
+            {% if i.NON_UNIQUE == 0 %}
+            <span class="status-paid">YES</span>
+            {% else %}
+            <span class="status-active">NO</span>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+<!-- Views -->
+<h2>Views</h2>
+{% if views %}
+<table>
+    <tr>
+        <th>View Name</th>
+    </tr>
+    {% for v in views %}
+    <tr>
+        <td>{{ v.VIEW_NAME }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<div class="empty-message">No views found.</div>
+{% endif %}
+
+<!-- Transaction Safety -->
+<h2>Transaction Safety</h2>
+<div class="card-grid">
+    <div class="card card-info">
+        <h3>ACID Compliance</h3>
+        <div class="card-value" style="font-size:0.9rem">START TRANSACTION / COMMIT / ROLLBACK</div>
+    </div>
+    <div class="card card-accent">
+        <h3>Transfer Procedure</h3>
+        <div class="card-value" style="font-size:0.9rem">sp_transfer_money</div>
+    </div>
+    <div class="card card-warning">
+        <h3>Row Locking</h3>
+        <div class="card-value" style="font-size:0.9rem">SELECT ... FOR UPDATE</div>
+    </div>
+</div>
+
+{% endblock %}

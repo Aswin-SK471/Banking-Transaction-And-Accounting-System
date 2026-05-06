@@ -4,6 +4,12 @@
 
 {% block content %}
 {% if reports %}
+
+<!-- Chart -->
+<div class="chart-container">
+    <canvas id="monthlyChart"></canvas>
+</div>
+
 <table>
     <tr>
         <th>Year</th>
@@ -30,6 +36,68 @@
     </tr>
     {% endfor %}
 </table>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    var labels = [];
+    var deposits = [];
+    var withdrawals = [];
+    {% for r in reports %}
+    labels.push('{{ r.txn_month }}/{{ r.txn_year }}');
+    deposits.push({{ r.total_deposits }});
+    withdrawals.push({{ r.total_withdrawals }});
+    {% endfor %}
+
+    // Reverse so oldest is on the left
+    labels.reverse();
+    deposits.reverse();
+    withdrawals.reverse();
+
+    new Chart(document.getElementById('monthlyChart'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Deposits',
+                    data: deposits,
+                    backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                    borderRadius: 6,
+                    barPercentage: 0.6
+                },
+                {
+                    label: 'Withdrawals',
+                    data: withdrawals,
+                    backgroundColor: 'rgba(245, 158, 11, 0.8)',
+                    borderRadius: 6,
+                    barPercentage: 0.6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { padding: 20, font: { family: "'Poppins', 'Inter', sans-serif", size: 13 } }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(0,0,0,0.04)' },
+                    ticks: { font: { family: "'Poppins', 'Inter', sans-serif" } }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { family: "'Poppins', 'Inter', sans-serif" } }
+                }
+            }
+        }
+    });
+</script>
+
 {% else %}
 <div class="empty-message">No transactions yet to summarize.</div>
 {% endif %}

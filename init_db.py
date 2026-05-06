@@ -32,7 +32,11 @@ def run():
             user_id INT PRIMARY KEY AUTO_INCREMENT,
             username VARCHAR(100) NOT NULL UNIQUE,
             email VARCHAR(100) NOT NULL UNIQUE,
-            password_hash VARCHAR(255) NOT NULL
+            gmail VARCHAR(100) UNIQUE,
+            aadhar_number VARCHAR(12) UNIQUE,
+            phone VARCHAR(15) NOT NULL,
+            password_hash VARCHAR(255) NOT NULL,
+            CONSTRAINT chk_aadhar CHECK (LENGTH(aadhar_number) = 12)
         )
     """)
 
@@ -40,6 +44,7 @@ def run():
         CREATE TABLE accounts (
             account_id INT PRIMARY KEY AUTO_INCREMENT,
             user_id INT NOT NULL,
+            account_type VARCHAR(20) DEFAULT 'Savings',
             balance DECIMAL(15,2) DEFAULT 0.00,
             CONSTRAINT chk_balance_non_negative CHECK (balance >= 0),
             FOREIGN KEY (user_id) REFERENCES users(user_id)
@@ -67,6 +72,7 @@ def run():
             loan_amount DECIMAL(15,2) NOT NULL,
             remaining_amount DECIMAL(15,2) NOT NULL,
             interest_rate DECIMAL(5,2) NOT NULL,
+            interest_amount DECIMAL(12,2),
             start_date DATETIME DEFAULT CURRENT_TIMESTAMP,
             status ENUM('ACTIVE','PAID') DEFAULT 'ACTIVE',
             CONSTRAINT chk_loan_amount_positive CHECK (loan_amount > 0),
@@ -81,10 +87,13 @@ def run():
         CREATE TABLE loan_payments (
             payment_id INT PRIMARY KEY AUTO_INCREMENT,
             loan_id INT NOT NULL,
+            account_id INT NOT NULL,
             amount_paid DECIMAL(15,2) NOT NULL,
+            remaining_balance DECIMAL(15,2) NOT NULL,
             payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
             CONSTRAINT chk_payment_positive CHECK (amount_paid > 0),
-            FOREIGN KEY (loan_id) REFERENCES loans(loan_id)
+            FOREIGN KEY (loan_id) REFERENCES loans(loan_id),
+            FOREIGN KEY (account_id) REFERENCES accounts(account_id)
         )
     """)
 
@@ -171,6 +180,14 @@ def run():
         END
     """)
 
+    # ---- TRIGGER: Auto-calculate interest ----
+    cursor.execute("""
+        CREATE TRIGGER trg_calculate_interest
+        BEFORE INSERT ON loans
+        FOR EACH ROW
+        SET NEW.interest_amount = NEW.loan_amount * NEW.interest_rate / 100
+    """)
+
     # ---- STORED PROCEDURE ----
     print("Creating stored procedure...")
 
@@ -215,10 +232,49 @@ def run():
             UPDATE accounts SET balance = balance - p_amount
             WHERE account_id = p_from_acc;
 
+            -- Create a savepoint after successful deduction
+            SAVEPOINT after_deduct;
+
             UPDATE accounts SET balance = balance + p_amount
             WHERE account_id = p_to_acc;
 
+            -- Check for failure condition: Receiver account does not exist
+            IF ROW_COUNT() = 0 THEN
+                -- If something goes wrong:
+                ROLLBACK TO after_deduct;
+                ROLLBACK; -- abort the entire transaction
+                SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'Receiver account does not exist';
+            END IF;
+
             COMMIT;
+        END
+    """)
+
+    # ---- STORED PROCEDURE: Calculate Total Balance (Cursor) ----
+    cursor.execute("""
+        CREATE PROCEDURE calculate_total_balance()
+        BEGIN
+            DECLARE done INT DEFAULT FALSE;
+            DECLARE acc_balance DECIMAL(15,2);
+            DECLARE total DECIMAL(15,2) DEFAULT 0;
+
+            DECLARE cur CURSOR FOR SELECT balance FROM accounts;
+            DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+
+            OPEN cur;
+
+            read_loop: LOOP
+                FETCH cur INTO acc_balance;
+                IF done THEN
+                    LEAVE read_loop;
+                END IF;
+                SET total = total + acc_balance;
+            END LOOP;
+
+            CLOSE cur;
+
+            SELECT total AS total_bank_balance;
         END
     """)
 

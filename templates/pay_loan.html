@@ -5,8 +5,21 @@
 {% block content %}
 <div class="form-card">
     <form method="POST" action="{{ url_for('pay_loan') }}">
-        <label for="loan_id">Loan ID</label>
-        <input type="text" id="loan_id" name="loan_id" placeholder="e.g. 1" required>
+        <label for="loan_id">Loan</label>
+        <select id="loan_id" name="loan_id" required>
+            <option value="" disabled selected>-- Select a loan --</option>
+            {% for l in loans %}
+            <option value="{{ l.loan_id }}">Loan #{{ l.loan_id }} (Remaining ₹{{ l.remaining_amount }})</option>
+            {% endfor %}
+        </select>
+
+        <label for="account_id">Pay From Account</label>
+        <select id="account_id" name="account_id" required>
+            <option value="" disabled selected>-- Choose an account --</option>
+            {% for a in accounts %}
+            <option value="{{ a.account_id }}">Account #{{ a.account_id }} — ₹{{ a.balance }}</option>
+            {% endfor %}
+        </select>
 
         <label for="payment_amount">Payment Amount</label>
         <input type="text" id="payment_amount" name="payment_amount" placeholder="e.g. 5000.00" required>

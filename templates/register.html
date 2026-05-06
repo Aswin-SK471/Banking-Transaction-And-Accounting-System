@@ -3,31 +3,84 @@
 
 {% block auth_content %}
 <div class="auth-page">
-    <div class="auth-container">
-        <div class="auth-brand-icon">🏛</div>
-        <div class="auth-brand">Banking System</div>
-        <div class="auth-subtitle">Create your banking account</div>
+    <div class="auth-split-card">
 
-        <div class="form-card">
+        <!-- Left Side: Form -->
+        <div class="auth-form-side">
+            <img src="{{ url_for('static', filename='logo.png') }}?v=2" alt="Logo" style="width: 50px; height: 50px; margin-bottom: 30px; border-radius: 14px; box-shadow: 0 8px 24px var(--primary-glow);">
+            <h2 class="auth-heading">Create Account</h2>
+            <p class="auth-subheading">Welcome to Banking System - Let's get you set up</p>
+
             <form method="POST" action="{{ url_for('register') }}">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" placeholder="Choose a username" required>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" placeholder="Choose username" required>
+                    </div>
+                    <div>
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" placeholder="you@gmail.com" required>
+                    </div>
+                </div>
 
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" placeholder="you@example.com" required>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label for="aadhar_number">Aadhar Number</label>
+                        <input type="text" id="aadhar_number" name="aadhar_number" pattern="\d{12}" minlength="12" maxlength="12" placeholder="12-digit Aadhar" title="Aadhar number must be exactly 12 digits" required>
+                    </div>
+                    <div>
+                        <label for="phone">Phone Number</label>
+                        <input type="tel" id="phone" name="phone" placeholder="Phone Number" required>
+                    </div>
+                </div>
 
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="Min. 4 characters" required>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" placeholder="Min. 4 characters" required>
+                    </div>
+                    <div>
+                        <label for="confirm_password">Confirm Password</label>
+                        <input type="password" id="confirm_password" name="confirm_password" placeholder="Re-enter password" required>
+                    </div>
+                </div>
 
-                <label for="confirm_password">Confirm Password</label>
-                <input type="password" id="confirm_password" name="confirm_password" placeholder="Re-enter password"
-                    required>
-
-                <button type="submit" class="btn-submit">Create Account</button>
+                <button type="submit" class="btn-submit">Sign up</button>
             </form>
+
+            <div class="auth-footer">
+                Already have an account? <a href="{{ url_for('login') }}">Log in</a>
+            </div>
         </div>
 
-        <p>Already have an account? <a href="{{ url_for('login') }}">Sign in</a></p>
+        <!-- Right Side: Presentation -->
+        <div class="auth-presentation-side">
+            <div class="presentation-mocks-wrapper">
+                <!-- Sidebar mock -->
+                <div class="mock-sidebar">
+                    <div class="mock-sidebar-icon active"></div>
+                    <div class="mock-sidebar-icon"></div>
+                    <div class="mock-sidebar-icon"></div>
+                </div>
+
+                <!-- Credit Card mock -->
+                <div class="mock-cc-container">
+                    <div class="mock-cc-top">
+                        <img src="{{ url_for('static', filename='logo.png') }}?v=2" alt="Logo" style="width: 30px; height: 30px; border-radius: 8px;">
+                        <div style="font-weight: 700; color: var(--text-muted);">VISA</div>
+                    </div>
+                    <div class="mock-cc-balance">
+                        <span>Combined balance</span>
+                        12,347.23 $
+                    </div>
+                    <div class="mock-cc-bottom">
+                        <div>Primary Card<br>3495 **** **** 6917</div>
+                        <div style="text-align: right;"><br>2,546.64$</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 {% endblock %}

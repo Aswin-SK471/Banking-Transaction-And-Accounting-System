@@ -14,7 +14,11 @@ CREATE TABLE users (
     user_id INT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(100) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL
+    gmail VARCHAR(100) UNIQUE,
+    aadhar_number VARCHAR(12) UNIQUE,
+    phone VARCHAR(15) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    CONSTRAINT chk_aadhar CHECK (LENGTH(aadhar_number) = 12)
 );
 
 -- =====================================================
@@ -23,6 +27,7 @@ CREATE TABLE users (
 CREATE TABLE accounts (
     account_id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,
+    account_type VARCHAR(20) DEFAULT 'Savings',
     balance DECIMAL(15,2) DEFAULT 0.00,
     CONSTRAINT chk_balance_non_negative CHECK (balance >= 0),
     FOREIGN KEY (user_id) REFERENCES users(user_id)
@@ -52,6 +57,7 @@ CREATE TABLE loans (
     loan_amount DECIMAL(15,2) NOT NULL,
     remaining_amount DECIMAL(15,2) NOT NULL,
     interest_rate DECIMAL(5,2) NOT NULL,
+    interest_amount DECIMAL(12,2),
     start_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     status ENUM('ACTIVE','PAID') DEFAULT 'ACTIVE',
     CONSTRAINT chk_loan_amount_positive CHECK (loan_amount > 0),
@@ -67,10 +73,13 @@ CREATE TABLE loans (
 CREATE TABLE loan_payments (
     payment_id INT PRIMARY KEY AUTO_INCREMENT,
     loan_id INT NOT NULL,
+    account_id INT NOT NULL,
     amount_paid DECIMAL(15,2) NOT NULL,
+    remaining_balance DECIMAL(15,2) NOT NULL,
     payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_payment_positive CHECK (amount_paid > 0),
-    FOREIGN KEY (loan_id) REFERENCES loans(loan_id)
+    FOREIGN KEY (loan_id) REFERENCES loans(loan_id),
+    FOREIGN KEY (account_id) REFERENCES accounts(account_id)
 );
 
 -- =====================================================
@@ -256,11 +265,54 @@ BEGIN
     UPDATE accounts SET balance = balance - p_amount
     WHERE account_id = p_from_acc;
 
+    -- Create a savepoint after successful deduction
+    SAVEPOINT after_deduct;
+
     -- Credit to receiver
     UPDATE accounts SET balance = balance + p_amount
     WHERE account_id = p_to_acc;
 
+    -- Check for failure condition: Receiver account does not exist
+    IF ROW_COUNT() = 0 THEN
+        -- If something goes wrong:
+        ROLLBACK TO after_deduct;
+        ROLLBACK; -- abort the entire transaction
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Receiver account does not exist';
+    END IF;
+
     COMMIT;
+END$$
+
+DELIMITER ;
+
+-- =====================================================
+-- STORED PROCEDURE: Calculate Total Balance (Cursor)
+-- =====================================================
+DELIMITER $$
+
+CREATE PROCEDURE calculate_total_balance()
+BEGIN
+    DECLARE done INT DEFAULT FALSE;
+    DECLARE acc_balance DECIMAL(15,2);
+    DECLARE total DECIMAL(15,2) DEFAULT 0;
+
+    DECLARE cur CURSOR FOR SELECT balance FROM accounts;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+
+    OPEN cur;
+
+    read_loop: LOOP
+        FETCH cur INTO acc_balance;
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+        SET total = total + acc_balance;
+    END LOOP;
+
+    CLOSE cur;
+
+    SELECT total AS total_bank_balance;
 END$$
 
 DELIMITER ;
@@ -324,10 +376,10 @@ ORDER BY txn_year DESC, txn_month DESC;
 -- =====================================================
 -- Sample users (password for both: password123)
 -- Hashes generated with werkzeug.security.generate_password_hash
-INSERT INTO users (username, email, password_hash) VALUES
-('Alice', 'alice@mail.com',
+INSERT INTO users (username, email, gmail, aadhar_number, phone, password_hash) VALUES
+('Alice', 'alice@mail.com', 'alice@gmail.com', '123456789012', '9876543210',
  'scrypt:32768:8:1$placeholder$0000000000000000000000000000000000000000000000000000000000000000'),
-('Bob', 'bob@mail.com',
+('Bob', 'bob@mail.com', 'bob@gmail.com', '987654321098', '8765432109',
  'scrypt:32768:8:1$placeholder$0000000000000000000000000000000000000000000000000000000000000000');
 
 INSERT INTO accounts (user_id, balance) VALUES

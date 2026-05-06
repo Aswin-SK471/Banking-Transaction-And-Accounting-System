@@ -3,63 +3,157 @@
 {% block page_heading %}Dashboard{% endblock %}
 
 {% block content %}
-<!-- Summary Cards -->
-<div class="card-grid">
-    <div class="card card-accent">
-        <h3>Total Balance</h3>
-        <div class="card-value">₹{{ total_balance }}</div>
+<div class="dashboard-grid">
+    <!-- LEFT COLUMN: Main Stats & Accounts -->
+    <div class="grid-left">
+        <div class="stats-top-row">
+            <!-- Balance Statistic Doughnut -->
+            <div class="card balance-card">
+                <h3>Balance statistic</h3>
+                <div class="chart-wrapper">
+                    <canvas id="balanceChart"></canvas>
+                    <div class="chart-center">
+                        <div class="chart-value">₹{{ total_balance }}</div>
+                        <div class="chart-label">Total Balance</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mini Stats -->
+            <div class="mini-stats">
+                <div class="card mini-stat">
+                    <h3>Incoming</h3>
+                    <p class="stat-sub">Waiting for confirmation</p>
+                    <div class="stat-value green">₹{{ txn_stats.total_deposits }}</div>
+                    <canvas id="incomingChart" height="50"></canvas>
+                </div>
+                <div class="card mini-stat">
+                    <h3>Outgoing</h3>
+                    <p class="stat-sub">All approved</p>
+                    <div class="stat-value text">₹{{ txn_stats.total_withdrawals }}</div>
+                    <canvas id="outgoingChart" height="50"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Overview (Credit Cards) -->
+        <h3 class="section-title">Account Overview</h3>
+        <div class="credit-cards-container">
+            {% for a in accounts %}
+            <div class="credit-card var-{{ loop.index0 % 3 }}">
+                <div class="cc-top">
+                    <span class="cc-brand">VISA</span>
+                    <span class="cc-dots">●●●● {{ "%04d" | format(a.account_id) }}</span>
+                </div>
+                <div class="cc-bottom">
+                    <div class="cc-bank">{{ a.account_type or 'Savings' }} Account</div>
+                    <div class="cc-balance">₹{{ a.balance }}</div>
+                </div>
+            </div>
+            {% endfor %}
+            {% if not accounts %}
+            <div class="empty-message" style="margin: 0;">No accounts yet. Create one to begin.</div>
+            {% endif %}
+        </div>
     </div>
-    <div class="card card-info">
-        <h3>Deposits</h3>
-        <div class="card-value">₹{{ txn_stats.total_deposits }}</div>
-    </div>
-    <div class="card card-warning">
-        <h3>Withdrawals</h3>
-        <div class="card-value">₹{{ txn_stats.total_withdrawals }}</div>
-    </div>
-    <div class="card">
-        <h3>Active Loans</h3>
-        <div class="card-value">{{ loan_stats.active_loans }}</div>
-    </div>
-    <div class="card card-warning">
-        <h3>Loan Remaining</h3>
-        <div class="card-value">₹{{ loan_stats.total_remaining }}</div>
-    </div>
-    <div class="card">
-        <h3>Accounts</h3>
-        <div class="card-value">{{ accounts|length }}</div>
+
+    <!-- RIGHT COLUMN: Profile & Txns -->
+    <div class="grid-right">
+        <!-- Quick Profile -->
+        {% if user_info %}
+        <div class="card profile-card">
+            <div class="profile-avatar">{{ user_info.name[0]|upper }}</div>
+            <h4>{{ user_info.name }}</h4>
+            <p>Super Admin</p>
+        </div>
+        {% endif %}
+
+        <!-- Quick Actions Grid -->
+        <div class="quick-nav">
+            <a href="{{ url_for('create_account') }}" class="q-btn"><span class="nav-icon">➕</span><br>Account</a>
+            <a href="{{ url_for('deposit') }}" class="q-btn"><span class="nav-icon">💰</span><br>Deposit</a>
+            <a href="{{ url_for('withdraw') }}" class="q-btn"><span class="nav-icon">💸</span><br>Withdraw</a>
+            <a href="{{ url_for('transfer') }}" class="q-btn"><span class="nav-icon">🔄</span><br>Transfer</a>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="card txn-card">
+            <h3>Recent transactions</h3>
+            <div class="txn-list">
+                {% for t in recent_txns %}
+                <div class="txn-item">
+                    <div class="txn-icon {% if t.type == 'DEPOSIT' %}bg-green{% else %}bg-red{% endif %}">
+                        {% if t.type == 'DEPOSIT' %}↓{% else %}↑{% endif %}
+                    </div>
+                    <div class="txn-info">
+                        <div class="txn-title">{{ t.type|capitalize }} (Acct #{{ t.account_id }})</div>
+                        <div class="txn-time">{{ t.created_at.strftime('%d %b %Y, %H:%M') }}</div>
+                    </div>
+                    <div class="txn-amount {% if t.type == 'DEPOSIT' %}green{% else %}text{% endif %}">
+                        {% if t.type == 'DEPOSIT' %}+{% else %}-{% endif %}₹{{ t.amount }}
+                    </div>
+                </div>
+                {% endfor %}
+                {% if not recent_txns %}
+                <div class="empty-message" style="border:none; padding: 20px 0;">No recent transactions.</div>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Accounts Table -->
-<h2>Your Accounts</h2>
-{% if accounts %}
-<table>
-    <tr>
-        <th>Account ID</th>
-        <th>Balance (₹)</th>
-    </tr>
-    {% for a in accounts %}
-    <tr>
-        <td>#{{ a.account_id }}</td>
-        <td>₹{{ a.balance }}</td>
-    </tr>
-    {% endfor %}
-</table>
-{% else %}
-<div class="empty-message">No accounts yet. Create your first account to get started.</div>
-{% endif %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Balance Doughnut
+    new Chart(document.getElementById('balanceChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Deposits', 'Withdrawals'],
+            datasets: [{
+                data: [{{ txn_stats.total_deposits }}, {{ txn_stats.total_withdrawals }}],
+                backgroundColor: ['#10b981', '#6366f1'],
+                borderWidth: 0,
+                cutout: '75%',
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { enabled: true } }
+        }
+    });
 
-<!-- Quick Actions -->
-<h2>Quick Actions</h2>
-<div class="nav-grid">
-    <a href="{{ url_for('create_account') }}"><button class="nav-btn">➕ New Account</button></a>
-    <a href="{{ url_for('deposit') }}"><button class="nav-btn">💰 Deposit</button></a>
-    <a href="{{ url_for('withdraw') }}"><button class="nav-btn">💸 Withdraw</button></a>
-    <a href="{{ url_for('transfer') }}"><button class="nav-btn">🔄 Transfer</button></a>
-    <a href="{{ url_for('apply_loan') }}"><button class="nav-btn">📝 Apply Loan</button></a>
-    <a href="{{ url_for('transactions') }}"><button class="nav-btn">📋 Transactions</button></a>
-    <a href="{{ url_for('report_monthly') }}"><button class="nav-btn">📅 Monthly Report</button></a>
-    <a href="{{ url_for('report_loans') }}"><button class="nav-btn">📈 Loan Analytics</button></a>
-</div>
+    // Incoming Sparkline
+    new Chart(document.getElementById('incomingChart'), {
+        type: 'line',
+        data: {
+            labels: ['1', '2', '3', '4', '5'],
+            datasets: [{
+                data: [10, 25, 15, 40, {{ txn_stats.total_deposits }}],
+                borderColor: '#10b981',
+                borderWidth: 2,
+                tension: 0.4,
+                pointRadius: 0
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
+    });
+
+    // Outgoing Sparkline
+    new Chart(document.getElementById('outgoingChart'), {
+        type: 'line',
+        data: {
+            labels: ['1', '2', '3', '4', '5'],
+            datasets: [{
+                data: [30, 20, 35, 10, {{ txn_stats.total_withdrawals }}],
+                borderColor: '#6366f1',
+                borderWidth: 2,
+                tension: 0.4,
+                pointRadius: 0
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
+    });
+</script>
 {% endblock %}

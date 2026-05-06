@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Banking System{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 
 <body>
@@ -17,7 +18,7 @@
         <!-- Dark Sidebar -->
         <nav class="sidebar">
             <div class="sidebar-brand">
-                <div class="brand-icon">🏛</div>
+                <img src="{{ url_for('static', filename='logo.png') }}?v=2" alt="Logo" style="width: 36px; height: 36px; border-radius: 10px; box-shadow: 0 4px 12px var(--primary-glow); object-fit: cover; flex-shrink: 0;">
                 <div class="brand-text">
                     Banking System
                     <small>Finance Dashboard</small>
@@ -73,6 +74,12 @@
                 <a href="{{ url_for('report_loans') }}"
                     class="{% if request.endpoint == 'report_loans' %}active{% endif %}">
                     <span class="nav-icon">📈</span><span>Loan Analytics</span>
+                </a>
+
+                <div class="sidebar-section">System</div>
+                <a href="{{ url_for('database_features') }}"
+                    class="{% if request.endpoint == 'database_features' %}active{% endif %}">
+                    <span class="nav-icon">🗃</span><span>DB Architecture</span>
                 </a>
             </div>
 
